@@ -3,6 +3,31 @@ import scala.collection.mutable
 
 object Solution {
 
+  private val dirtPositions = mutable.Set[Pos]()
+  private var bestPerm: List[Pos] = _
+
+  private def dist(a:Pos, b:Pos):Int = {
+    math.abs(a.x - b.x) + math.abs(a.y - b.y)
+  }
+
+  def tsp(pos:String,dp:Set[Pos]) = {
+    val Array(x,y) = pos.split(" ").map(_.toInt)
+    val initPos = new Pos(x,y)
+    def go(it:Iterator[List[Pos]],best:List[Pos],bestLen:Int):List[Pos] =
+      if(it.hasNext) {
+        val perm = it.next
+        var sum = 0
+        for(i <- perm.indices.drop(1)) {
+          sum += dist(perm(i-1),perm(i))
+        }
+        val totalDist = dist(perm.head,initPos) + sum
+        if(totalDist < bestLen)
+          go(it,perm,totalDist)
+        else go(it,best,bestLen)
+      } else best
+    go(dp.toList.permutations, List(), Int.MaxValue)
+  }
+
   def main(args: Array[String]):Unit = {
     val pos = Console.readLine
     val board = new Array[String](5)
@@ -13,60 +38,30 @@ object Solution {
         if board(i)(j) == 'd'
       ) {dirtPositions += new Pos(i,j)}
 
+    bestPerm = tsp(pos,dirtPositions.toSet)
     nextMove(pos, board)
   }
 
-  private var invalidate = true
-  private val dirtPositions = mutable.Set[Pos]()
-  private var lastPos: PosInfo = _
-
   case class Pos(x:Int, y:Int)
-  case class PosInfo(x:Int, y:Int, dist:Int)
-  object PosInfoOrder extends Ordering[PosInfo] {
-    override def compare(a:PosInfo, b:PosInfo) = {
-      a.dist - b.dist
-    }
-  }
-
-  private def dist(cpos:(Int,Int), pos:Pos) = {
-    math.abs(cpos._1 - pos.x) + math.abs(cpos._2 - pos.y)
-  }
-
-  def minDistToCurrentPos(cpos:(Int,Int),
-    board:Array[String]): PosInfo = {
-      var cdist = Int.MaxValue
-      var _cpos: Pos = null.asInstanceOf[Pos]
-      dirtPositions.foreach(pos =>
-        if(dist(cpos,pos) < cdist) {
-          cdist = dist(cpos,pos)
-          _cpos = pos
-        }
-      )
-    new PosInfo(_cpos.x, _cpos.y, cdist)
-  }
 
   def nextMove(pos:String, board:Array[String]): Unit = {
     val Array(x,y) = pos.split(" ").map(_.toInt)
-    if(invalidate) {
-      invalidate = false
-      lastPos = minDistToCurrentPos((x,y),board)
-    }
-    val mpos = lastPos
+    val initPos = new Pos(x,y)
+    val nextPos = bestPerm.head
 
     def go():String = {
-      (mpos.x - x) match {
+      nextPos.x - initPos.x match {
         case d if d < 0 => return "UP"
         case d if d > 0 => return "DOWN"
         case 0 =>
       }
-      (mpos.y - y) match {
+      nextPos.y - initPos.y match {
         case d if d < 0 => "LEFT"
         case d if d > 0 => "RIGHT"
-        case 0 => {
-          invalidate = true
-          dirtPositions -= new Pos(x,y)
+        case 0 =>
+          bestPerm = bestPerm.tail
           "CLEAN"
-        }
+
       }
     }
     println(go())
